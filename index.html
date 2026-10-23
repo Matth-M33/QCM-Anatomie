@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QCM Examen Infini Minimaliste</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f4f6f8; color: #1a202c; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .card { background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); width: 100%; max-width: 650px; padding: 28px; }
+    
+    .question-title { font-size: 1.15rem; font-weight: 700; color: #2d3748; margin-bottom: 18px; line-height: 1.4; text-align: center; }
+    
+    .image-container { width: 100%; max-width: 500px; margin: 0 auto 20px auto; display: flex; justify-content: center; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; min-height: 200px; }
+    .image-container img { max-width: 100%; max-height: 300px; height: auto; display: block; object-fit: contain; }
+    
+    .options-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+    .option-btn { display: flex; align-items: center; width: 100%; padding: 12px 16px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; text-align: left; font-size: 0.98rem; font-weight: 500; transition: all 0.15s ease; user-select: none; }
+    .option-btn:hover { background: #edf2f7; border-color: #cbd5e0; }
+    .option-btn.selected { background: #ebf8ff; border-color: #3182ce; color: #2b6cb0; }
+    .option-letter { font-weight: 700; width: 28px; height: 28px; background: #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 0.9rem; flex-shrink: 0; }
+    .option-btn.selected .option-letter { background: #3182ce; color: #fff; }
+    
+    .option-btn.correct-checked { background: #c6f6d5 !important; border-color: #38a169 !important; color: #22543d !important; }
+    .option-btn.correct-checked .option-letter { background: #38a169 !important; color: #fff !important; }
+    .option-btn.wrong-checked { background: #fed7d7 !important; border-color: #e53e3e !important; color: #742a2a !important; }
+    .option-btn.wrong-checked .option-letter { background: #e53e3e !important; color: #fff !important; }
+    .option-btn.missed-correct { background: #feebc8 !important; border-color: #dd6b20 !important; color: #7b341e !important; }
+    .option-btn.missed-correct .option-letter { background: #dd6b20 !important; color: #fff !important; }
+
+    .action-btn { width: 100%; padding: 14px; background: #3182ce; color: #ffffff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+    .action-btn:hover { background: #2b6cb0; }
+    .result-badge { text-align: center; font-size: 1.25rem; font-weight: 800; padding: 12px; border-radius: 10px; margin-bottom: 16px; display: none; line-height: 1.4; }
+    .result-badge.correct { background: #c6f6d5; color: #22543d; display: block; }
+    .result-badge.incorrect { background: #fed7d7; color: #742a2a; display: block; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div id="resultBadge" class="result-badge"></div>
+  <div id="questionTitle" class="question-title">Chargement...</div>
+  
+  <div class="image-container" id="imageBox" style="display: none;">
+    <img id="schemaImg" src="" alt="Schéma d'anatomie">
+  </div>
+
+  <div class="options-grid" id="optionsGrid"></div>
+
+  <button id="actionBtn" class="action-btn" onclick="handleAction()">Valider</button>
+</div>
+
+<script>
+// Banque stricte
+const Q_CATEGORIES = [
+  // Q1
+  [
+    {
+      title: "Le système respiratoire comprend :",
+      vrais: ["Le nez", "Le pharynx", "Le larynx", "La trachée"],
+      faux: ["L’œsophage", "La cavité buccale", "Des bronchiolaches", "L’intestin grêle"]
+    },
+    {
+      title: "Fonctionnellement, la zone respiratoire est la zone",
+      vrais: ["Où s’effectue les échanges entre l’air et le sang", "Où l’on retrouve les sacs alvéolaires", "Où l’on retrouve les bronchioles respiratoires", "Où l’on retrouve les alvéoles"],
+      faux: ["Ou l’air est filtré", "Où l’air est réchauffé", "Où l’air est humidifié", "Où l’air est conduit"]
+    },
+    {
+      title: "Les cornet nasaux :",
+      vrais: ["Sont des projections osseuses.", "Délimitent les méats nasaux.", "Augmentent la surface de contact avec la muqueuse.", "Favorisent les turbulences de l'air."],
+      faux: ["Se situent au niveau de la trachée.", "Lissent le flux d'air sans turbulences.", "Se situent au toit du laryngopharynx.", "Sont constitués de cartilage élastique."]
+    },
+    {
+      title: "Le nez :",
+      vrais: ["Est la première partie des voies respiratoires", "Comprend deux cavités nasales", "Possède des cavités nasales séparées par un septum", "Possède des narines où rentre l’air"],
+      faux: ["Est la dernière partie des voies respiratoires", "Comprends trois cavités nasales", "Ne possède pas de septum", "Ne possède pas de narines"]
+    },
+    {
+      title: "Concernant le pharynx :",
+      vrais: ["C'est un carrefour entre voies respiratoires et digestives.", "Le nasopharynx est un passage réservé à l'air.", "L'oropharynx laisse passer l'air et les aliments.", "Le laryngopharynx fait la jonction entre l'oropharynx et le larynx."],
+      faux: ["L'oropharynx est réservé exclusivement à l'air.", "Le nasopharynx s'ouvre directement sur l'œsophage.", "C'est un conduit formé d'anneaux de cartilage.", "Le laryngopharynx abrite la muqueuse olfactive"]
+    },
+    {
+      title: "Le cartilage thyroïde :",
+      vrais: ["Forme la pomme d’Adam.", "Constitue la paroi antérieure du larynx.", "Protège les plis vocaux situés juste derrière.", "Est situé sous l’os hyoïde"],
+      faux: ["Constitue la paroi postérieure du larynx", "Est un petit anneau fermé", "Ne protège pas les structures internes du larynx", "Fait partie du pharynx"]
+    },
+    {
+      title: "Concernant l’épiglotte :",
+      vrais: ["C'est un cartilage élastique en forme de feuille.", "Elle agit comme un clapet.", "Elle se rabat vers l'arrière sur la glotte lors de la déglutition.", "Elle empêche les aliments d'entrer dans les voies respiratoires."],
+      faux: ["Elle forme un anneau cartilagineux complet.", "Elle maintient la lumière du larynx ouverte en permanence.", "Elle abrite la muqueuse olfactive.", "Elle constitue la paroi antérieure sous la pomme d'Adam."]
+    },
+    {
+      title: "Les cartilages aryténoïdes :",
+      vrais: ["Reposent sur le cartilage cricoïde.", "Sont reliés aux plis vocaux.", "Participent aux mouvements des plis vocaux.", "Permettent la production des sons"],
+      faux: ["Forment la pomme d'Adam.", "Agissent comme un clapet lors de la déglutition.", "Maintiennent la lumière du larynx ouverte sous forme d'anneau.", "Se situent dans la cavité nasale."]
+    }
+  ],
+  // Q2
+  [
+    {
+      title: "Parmi ces propositions sur les tuniques de la paroi vasculaire, lesquelles sont correctes ? :",
+      vrais: ["L'intima est la tunique la plus interne.", "L'intima est en contact avec le sang et contient l'endothélium.", "La média est la tunique moyenne", "La média est formée de cellules musculaires lisses.", "L'adventice est la tunique externe"],
+      faux: ["La média est la couche en contact direct avec le sang.", "L'intima est formée de muscle strié.", "L'adventice assure la vasoconstriction.", "La média est la tunique la plus externe."]
+    },
+    {
+      title: "Quels sont les types de vaisseaux retrouvés dans le système cardiovasculaire ?",
+      vrais: ["Artères", "Artérioles", "Capillaires", "Veinules"],
+      faux: ["Aryténoïdes", "Biconcaves", "Capillarithum", "Adventices"]
+    },
+    {
+      title: "Concernant les artères et artérioles :",
+      vrais: ["Les artères élastiques sont proches du cœur.", "Les artères sont compliantes", "Les artères musculaires ajustent la vitesse d'écoulement.", "Les artérioles déterminent la résistance au flux sanguin."],
+      faux: ["Les artérioles ont le diamètre le plus large.", "Les artères élastiques sont riches en myocytes lisses.", "L'aorte est une artériole de résistance.", "Les artères musculaires ne contiennent pas de myocytes lisses."]
+    },
+    {
+      title: "Concernant les capillaires sanguins :",
+      vrais: ["Ce sont des vaisseaux microscopiques.", "Ils relient les artères aux veinules.", "Ils ont uniquement un endothélium et une membrane basale.", "Ils permettent les échanges entre le sang et les cellules."],
+      faux: ["Ils possèdent une média très épaisse.", "Ils contiennent des valvules anti-reflux.", "Ils possèdent une couche d'adventice rigide.", "Leur lumière est plus large que celle des veines."]
+    },
+    {
+      title: "La circulation systémique :",
+      vrais: ["Transporte le sang oxygéné du ventricule gauche vers les organes.", "Transporte le sang via les artères et artérioles", "Émerge de l'aorte et de ses branches.", "Ramène le sang à l'oreillette droite par les veines caves."],
+      faux: ["Transporte le sang désoxygéné vers les alvéoles pulmonaires.", "Débute dans le ventricule droit.", "Se vide directement dans l'oreillette gauche.", "Ne comporte aucun réseau capillaire."]
+    },
+    {
+      title: "La circulation pulmonaire :",
+      vrais: ["Débute au niveau du ventricule droit.", "Transporte le sang désoxygéné vers les alvéoles.", "Se divise en artères pulmonaires droite et gauche via le tronc pulmonaire.", "Ramène le sang oxygéné à l'oreillette gauche par quatre veines pulmonaires."],
+      faux: ["Propulse le sang oxygéné vers les organes.", "Débute dans l'oreillette droite.", "Se termine dans le ventricule gauche.", "Emprunte l'aorte descendante."]
+    },
+    {
+      title: "Le retour veineux dépend :",
+      vrais: ["De la différence de pression entre veinules et ventricule droit", "De la pompe musculaire", "De la pompe respiratoire", "De l’aide des valvules qui empêchent le reflux sanguin"],
+      faux: ["De la contraction de l'aorte.", "De la vasoconstriction des capillaires.", "De la pulsation du cartilage cricoïde.", "De la dépression des coronaires"]
+    }
+  ],
+  // Q3
+  [
+    {
+      title: "Le système nerveux centrale est constitué de :",
+      vrais: ["La moelle épinière", "Le cerveau", "Le cervelet", "Le tronc cérébral"],
+      faux: ["De nerfs crâniens", "De nerfs périphériques", "Du plexus thoracique", "Uniquement de l’encéphale"]
+    },
+    {
+      title: "Parmi ces propositions sur les voies du système nerveux périphérique, lesquelles sont juste ? :",
+      vrais: ["La voie afférente (sensitive) transmet les informations vers le système nerveux central.", "La voie efférente (motrice) transmet les commandes aux organes effecteurs.", "Le système somatique contrôle les activités volontaires.", "Le système autonome contrôle les fonctions involontaires."],
+      faux: ["La voie afférente transmet les commandes motrices aux muscles.", "La voie efférente capte les informations des récepteurs.", "Le système somatique contrôle le cœur et les glandes.", "Le système autonome contrôle les mouvements volontaires du squelette."]
+    },
+    {
+      title: "Concernant le système nerveux autonome :",
+      vrais: ["Il contrôle les fonctions involontaires.", "Le système sympathique prédomine en situation de tension (« fuite ou lutte »).", "Le système parasympathique prédomine au repos et pendant la digestion."],
+      faux: ["Il contrôle les muscles squelettiques volontaires.", "Le parasympathique augmente la fréquence cardiaque à l'effort.", "Le sympathique prédomine au repos.", "Il est sous le contrôle exclusif de la voie somatique."]
+    },
+    {
+      title: "Le tronc cérébral :",
+      vrais: ["Comprend le Pont", "Comprend le bulbe rachidien", "Relie le diencéphale à la moelle épinière", "Comprend le mésencéphale"],
+      faux: ["Comprend le thalamus", "Comprend l’hypothalamus", "Comprend le cervelet", "Relie le cervelet à la substance blanche du cerveau"]
+    },
+    {
+      title: "Le cervelet :",
+      vrais: ["Est situé dans la fosse crânienne postérieure.", "Se trouve sous les hémisphères cérébraux.", "Coordonne les mouvements volontaires.", "Participe à la posture et à l'équilibre."],
+      faux: ["Sécrète la bile et le suc gastrique.", "Est formé de 31 paires de nerfs crâniens.", "Régule la fréquence cardiaque de repos.", "Contrôle uniquement l’ouïe"]
+    },
+    {
+      title: "Le système nerveux périphérique est composé :",
+      vrais: ["De 12 nerfs crâniens.", "De 31 paires de nerfs spinaux.", "De nerfs crâniens émergent surtout du tronc cérébral.", "De nerfs spinaux reliés à la moelle épinière."],
+      faux: ["De 12 paires de nerfs spinaux.", "De 31 paires de nerfs crâniens.", "De nerfs crâniens émergent tous des vertèbres lombaires.", "De nerfs spinaux rattachés à l'hypothalamus."]
+    }
+  ],
+  // Q4
+  [
+    {
+      title: "Le système musculaire :",
+      vrais: ["Regroupe l’ensemble des muscles et tissus musculaires", "A pour fonction de transformer l’énergie chimique en énergie mécanique", "Produit une force et un mouvement", "Comprend trois types de tissu musculaire"],
+      faux: ["Regroupe le tissus musculaire et osseux", "Transforme l’énergie cinétique", "Produit l’équilibre uniquement", "Comprend quatre types de tissu musculaire"]
+    },
+    {
+      title: "Concernant le tissu musculaire squelettique :",
+      vrais: ["Il est fixé aux os.", "Il permet le mouvement du squelette.", "Il est strié.", "Son activité est principalement volontaire."],
+      faux: ["Il se trouve dans la paroi des organes creux.", "Il est lisse.", "Son activité est contrôlée uniquement par le système autonome.", "Il constitue la majeure partie du cœur."]
+    },
+    {
+      title: "Concernant ces propositions sur la structure d'un muscle, sélectionnez les bonnes réponses :",
+      vrais: ["Un chef musculaire est une portion ayant sa propre origine.", "Le ventre musculaire est la partie contractile.", "Le tendon est constitué de tissu conjonctif dense.", "Le ventre produit la force transmise par les tendons aux articulations."],
+      faux: ["Le tendon est la partie contractile du muscle.", "Un muscle mono-articulaire croise plusieurs articulations.", "Le ventre est constitué uniquement de tissu osseux.", "Les tendons génèrent la force de contraction."]
+    },
+    {
+      title: "Concernant l'agencement des fibres musculaires :",
+      vrais: ["Un muscle fusiforme est plus épais au centre et effilé aux extrémités.", "Un muscle circulaire entoure un orifice.", "Les muscles penniformes ont des fibres obliques par rapport au tendon.", "L'agencement penniforme produit une grande force."],
+      faux: ["Un muscle unipenné a des fibres disposées en cercle.", "Les fibres parallèles sont obliques au tendon.", "Un muscle bipenné n'a pas de tendon.", "Les muscles penniformes servent à fermer les orifices."]
+    }
+  ],
+  // Q5
+  [
+    {
+      title: "Concernant le système squelettique, quelles propositions ci-dessous sont correctes ? :",
+      vrais: ["Le squelette est constitué de 2 grandes parties", "Le squelette comprend le squelette axial et appendiculaire", "Le squelette axial comprend la tête, la colonne vertébrale et la cage thoracique"],
+      faux: ["Le squelette axial comprend les membres supérieurs.", "Le squelette appendiculaire forme la colonne vertébrale.", "La cage thoracique fait partie du squelette appendiculaire.", "Le squelette comprend 6 grandes parties"]
+    },
+    {
+      title: "Sélectionnez les bonnes réponses parmi ces propositions sur la classification de la morphologie des os :",
+      vrais: ["Les os longs ont une prédominance nette de la longueur.", "Les os courts ont trois dimensions égales.", "Les os plats sont minces et ont un rôle de protection.", "Les vertèbres sont des os irréguliers."],
+      faux: ["Les os longs n’ont pas de prédominances", "Les vertèbres sont des os plats.", "Les os courts ont une longueur prédominante.", "Les os plats représentent la majeure partie des os du squelette"]
+    },
+    {
+      title: "Le système squelettique :",
+      vrais: ["Soutient les tissus mous et sert de point d'attache aux muscles.", "Protège les organes vitaux.", "Stocke le calcium et le phosphore.", "Héberge l'hématopoïèse dans la moelle rouge."],
+      faux: ["Sécrète des enzymes digestives.", "Ne produit pas de globules rouges", "Stocke uniquement du magnésium", "Protège uniquement le foie"]
+    },
+    {
+      title: "les articulations synoviales :",
+      vrais: ["Possèdent une cavité articulaire.", "Sont maintenus par une capsule articulaire et des ligaments.", "Ont une capsule formée d'une capsule fibreuse externe et d'une membrane synoviale interne.", "Sont très mobiles."],
+      faux: ["Sont dépourvues de cavité articulaire.", "Sont totalement immobiles.", "Ont une capsule formée d’une membrane synoviale externe.", "Sont dénuées de tout liquide."]
+    },
+    {
+      title: "Le liquide synoviale :",
+      vrais: ["Se trouve dans la cavité articulaire.", "Est contenu par la membrane synoviale.", "Est un liquide visqueux", "Réduit les frictions et absorbe les chocs."],
+      faux: ["Contient des enzymes de digestion chimique.", "Est produit par le muscle.", "Circule dans les artères systémiques.", "Augmente les frottements articulaires."]
+    },
+    {
+      title: "L’os :",
+      vrais: ["Est un organe mécanique", "Constitue la charpente du corps humain", "Est un tissu conjonctif", "Il assure soutien et protection"],
+      faux: ["N’est soumis à aucune contraintes", "Constitue l’isolation du corps humain", "Est un tissu musculaire", "Est an organe ergothérapique"]
+    }
+  ]
+];
+
+// Identifiants uniques et suivi d'apprentissage
+Q_CATEGORIES.forEach((catList, cIdx) => {
+  catList.forEach((q, qIdx) => {
+    q.id = `cat_${cIdx}_q_${qIdx}`;
+  });
+});
+
+const qState = {}; // { [id]: { asked: false, failed: false } }
+
+// Module Schémas
+const SCHEMA_SYSTEMS = [
+  {
+    id: "vasculaire",
+    title: "Sur ce schéma, la flèche désigne :",
+    items: [
+      { file: "Intima.png", text: "L'intima" },
+      { file: "Membrane_basale.png", text: "La membrane basale" },
+      { file: "Media.png", text: "La média" },
+      { file: "Adventice.png", text: "L'adventice" }
+    ]
+  },
+  {
+    id: "respiratoire",
+    title: "Sur ce schéma, la flèche désigne :",
+    items: [
+      { file: "Cavite_nasale.png", text: "La cavité nasale" },
+      { file: "Pharynx.png", text: "Le pharynx" },
+      { file: "Trachee.png", text: "La trachée" },
+      { file: "Bronche.png", text: "La bronche" },
+      { file: "Diaphragme.png", text: "Le diaphragme" }
+    ]
+  },
+  {
+    id: "musculaire",
+    title: "Sur ce schéma, la flèche désigne :",
+    items: [
+      { file: "Epimysium.png", text: "L'épimysium" },
+      { file: "Perimysium.png", text: "Le périmysium" },
+      { file: "Endomysium.png", text: "L'endomysium" },
+      { file: "Myofibrilles.png", text: "Les myofibrilles" }
+    ]
+  },
+  {
+    id: "articulaire",
+    title: "Sur ce schéma, la flèche désigne :",
+    items: [
+      { file: "Capsule_fibreuse.png", text: "La capsule fibreuse" },
+      { file: "Cartilage_articulaire.png", text: "Le cartilage articulaire" },
+      { file: "Membrane_synoviale.png", text: "La membrane synoviale" },
+      { file: "Cavite_articulaire.png", text: "La cavité articulaire" }
+    ]
+  }
+];
+
+let globalQuestionCounter = 0;
+let categoryCycleIndex = 0;
+let currentQuestion = null;
+let selectedIndices = new Set();
+let isSubmitted = false;
+
+function shuffle(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateTextQuestion() {
+  const catList = Q_CATEGORIES[categoryCycleIndex];
+  categoryCycleIndex = (categoryCycleIndex + 1) % Q_CATEGORIES.length;
+  
+  // Initialisation du suivi pour les questions du thème
+  catList.forEach(q => {
+    if (!qState[q.id]) {
+      qState[q.id] = { asked: false, failed: false };
+    }
+  });
+
+  const unasked = catList.filter(q => !qState[q.id].asked);
+  const failed = catList.filter(q => qState[q.id].asked && qState[q.id].failed);
+
+  let q = null;
+
+  // Sélection pondérée (80% non posées / 70% échouées)
+  if (unasked.length > 0) {
+    if (Math.random() < 0.8) {
+      q = unasked[Math.floor(Math.random() * unasked.length)];
+    } else {
+      q = catList[Math.floor(Math.random() * catList.length)];
+    }
+  } else {
+    if (failed.length > 0 && Math.random() < 0.7) {
+      q = failed[Math.floor(Math.random() * failed.length)];
+    } else {
+      q = catList[Math.floor(Math.random() * catList.length)];
+    }
+  }
+  
+  // Tirage statistique des propositions vraies (40%/30%/10%/5%/5%)
+  const r = Math.random() * 90;
+  let targetVrai = 1;
+  if (r < 40) targetVrai = 1;
+  else if (r < 70) targetVrai = 2;
+  else if (r < 80) targetVrai = 3;
+  else if (r < 85) targetVrai = 4;
+  else targetVrai = 0;
+
+  targetVrai = Math.min(targetVrai, q.vrais.length);
+  let neededFaux = 4 - targetVrai;
+  if (neededFaux > q.faux.length) {
+    neededFaux = q.faux.length;
+    targetVrai = 4 - neededFaux;
+  }
+
+  const selectedVrais = shuffle(q.vrais).slice(0, targetVrai);
+  const selectedFaux = shuffle(q.faux).slice(0, neededFaux);
+
+  let choices = [];
+  selectedVrais.forEach(t => choices.push({ text: t, isCorrect: true }));
+  selectedFaux.forEach(t => choices.push({ text: t, isCorrect: false }));
+
+  choices = shuffle(choices);
+
+  choices.push({
+    text: "Aucune de ces propositions n'est exacte",
+    isCorrect: targetVrai === 0,
+    isNoneOption: true
+  });
+
+  return {
+    id: q.id,
+    title: q.title,
+    choices: shuffle(choices),
+    isSchema: false
+  };
+}
+
+function generateSchemaQuestion() {
+  const system = SCHEMA_SYSTEMS[Math.floor(Math.random() * SCHEMA_SYSTEMS.length)];
+  const targetItem = system.items[Math.floor(Math.random() * system.items.length)];
+  const isCorrectPresent = Math.random() < 0.7;
+
+  const sameSysOthers = shuffle(system.items.filter(it => it.file !== targetItem.file).map(it => it.text)).slice(0, 3);
+  
+  let otherPool = [];
+  SCHEMA_SYSTEMS.forEach(sys => {
+    sys.items.forEach(it => {
+      if (it.file !== targetItem.file && !sameSysOthers.includes(it.text)) {
+        otherPool.push(it.text);
+      }
+    });
+  });
+  otherPool = shuffle(otherPool);
+
+  let choices = [];
+  if (isCorrectPresent) {
+    choices.push({ text: targetItem.text, isCorrect: true });
+    sameSysOthers.forEach(txt => choices.push({ text: txt, isCorrect: false }));
+  } else {
+    sameSysOthers.forEach(txt => choices.push({ text: txt, isCorrect: false }));
+    choices.push({ text: otherPool[0], isCorrect: false });
+  }
+
+  choices = shuffle(choices);
+  choices.push({
+    text: "Aucune de ces propositions n'est exacte",
+    isCorrect: !isCorrectPresent,
+    isNoneOption: true
+  });
+
+  return {
+    title: system.title,
+    imageFile: targetItem.file,
+    choices: shuffle(choices),
+    isSchema: true
+  };
+}
+
+function loadNextQuestion() {
+  isSubmitted = false;
+  selectedIndices.clear();
+  document.getElementById("resultBadge").className = "result-badge";
+  document.getElementById("actionBtn").innerText = "Valider";
+
+  globalQuestionCounter++;
+
+  if (globalQuestionCounter % 5 === 0) {
+    currentQuestion = generateSchemaQuestion();
+  } else {
+    currentQuestion = generateTextQuestion();
+  }
+
+  renderQuestion();
+}
+
+function renderQuestion() {
+  document.getElementById("questionTitle").innerText = currentQuestion.title;
+  
+  const imgBox = document.getElementById("imageBox");
+  if (currentQuestion.isSchema) {
+    document.getElementById("schemaImg").src = currentQuestion.imageFile;
+    imgBox.style.display = "flex";
+  } else {
+    imgBox.style.display = "none";
+  }
+
+  const grid = document.getElementById("optionsGrid");
+  grid.innerHTML = "";
+
+  const letters = ["A", "B", "C", "D", "E"];
+  currentQuestion.choices.forEach((choice, idx) => {
+    const btn = document.createElement("button");
+    btn.className = "option-btn";
+    btn.innerHTML = `<span class="option-letter">${letters[idx]}</span><span>${choice.text}</span>`;
+    btn.onclick = () => toggleOption(idx);
+    grid.appendChild(btn);
+  });
+}
+
+function toggleOption(idx) {
+  if (isSubmitted) return;
+
+  const choice = currentQuestion.choices[idx];
+  if (choice.isNoneOption) {
+    selectedIndices.clear();
+    selectedIndices.add(idx);
+  } else {
+    const noneIdx = currentQuestion.choices.findIndex(c => c.isNoneOption);
+    if (noneIdx !== -1) selectedIndices.delete(noneIdx);
+    
+    if (selectedIndices.has(idx)) {
+      selectedIndices.delete(idx);
+    } else {
+      selectedIndices.add(idx);
+    }
+  }
+
+  const btns = document.querySelectorAll(".option-btn");
+  btns.forEach((btn, i) => {
+    btn.classList.toggle("selected", selectedIndices.has(i));
+  });
+}
+
+function handleAction() {
+  if (isSubmitted) {
+    loadNextQuestion();
+    return;
+  }
+
+  isSubmitted = true;
+  let isPerfect = true;
+
+  const btns = document.querySelectorAll(".option-btn");
+  currentQuestion.choices.forEach((choice, i) => {
+    const isSelected = selectedIndices.has(i);
+    const isCorrect = choice.isCorrect;
+
+    if (isSelected && isCorrect) {
+      btns[i].classList.add("correct-checked");
+    } else if (isSelected && !isCorrect) {
+      btns[i].classList.add("wrong-checked");
+      isPerfect = false;
+    } else if (!isSelected && isCorrect) {
+      btns[i].classList.add("missed-correct");
+      isPerfect = false;
+    }
+  });
+
+  // Mise à jour de l'état d'apprentissage
+  if (!currentQuestion.isSchema && currentQuestion.id) {
+    qState[currentQuestion.id].asked = true;
+    qState[currentQuestion.id].failed = !isPerfect;
+  }
+
+  const badge = document.getElementById("resultBadge");
+  badge.innerText = isPerfect ? "BON !" : "PAS BON";
+  badge.className = isPerfect ? "result-badge correct" : "result-badge incorrect";
+  
+  document.getElementById("actionBtn").innerText = "Question suivante →";
+}
+
+document.addEventListener("keydown", (e) => {
+  const key = e.key.toUpperCase();
+  const map = { "A": 0, "1": 0, "B": 1, "2": 1, "C": 2, "3": 2, "D": 3, "4": 3, "E": 4, "5": 4 };
+  if (key in map) toggleOption(map[key]);
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleAction(); }
+});
+
+loadNextQuestion();
+</script>
+</body>
+</html>
